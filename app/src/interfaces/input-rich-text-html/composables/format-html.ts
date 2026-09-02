@@ -52,6 +52,7 @@ function isBlock(node: Node): node is HTMLElement {
 // are significant and survive normalization.
 const LEADING_WS = /^[ \t\n\r\f]+/;
 const TRAILING_WS = /[ \t\n\r\f]+$/;
+const WS_RUN = /[ \t\n\r\f]+/g;
 
 function firstTextNode(el: Node): Text | null {
 	for (const child of Array.from(el.childNodes)) {
@@ -80,6 +81,24 @@ function trimBoundaryWhitespace(el: HTMLElement): void {
 	if (first) first.textContent = (first.textContent ?? '').replace(LEADING_WS, '');
 	const last = lastTextNode(el);
 	if (last) last.textContent = (last.textContent ?? '').replace(TRAILING_WS, '');
+}
+
+// Apply the same collapsing the HTML parser does inside a textblock: a run of ASCII whitespace
+// becomes a single space, and whitespace right after a <br> is dropped along with the line it ends.
+function collapseWhitespace(el: Node, afterBreak = false): boolean {
+	for (const child of Array.from(el.childNodes)) {
+		if (child.nodeType === Node.TEXT_NODE) {
+			const text = (child.textContent ?? '').replace(WS_RUN, ' ');
+			child.textContent = afterBreak ? text.replace(LEADING_WS, '') : text;
+			if (child.textContent !== '') afterBreak = false;
+		} else if (child.nodeName === 'BR') {
+			afterBreak = true;
+		} else {
+			afterBreak = collapseWhitespace(child, afterBreak);
+		}
+	}
+
+	return afterBreak;
 }
 
 function hasBlockChild(el: HTMLElement): boolean {
@@ -111,6 +130,7 @@ function serialize(nodes: NodeListOf<ChildNode> | ChildNode[], depth: number): s
 				lines.push(pad + el.outerHTML);
 			} else if (!hasBlockChild(el)) {
 				// inline-only block: keep its contents on one line, minus boundary whitespace
+				collapseWhitespace(el);
 				trimBoundaryWhitespace(el);
 				lines.push(pad + el.outerHTML);
 			} else {

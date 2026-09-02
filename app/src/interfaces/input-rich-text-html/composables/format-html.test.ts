@@ -55,6 +55,22 @@ describe('formatHtml', () => {
 		expect(formatHtml('<p>hi <em>there </em></p>')).toBe('<p>hi <em>there</em></p>');
 	});
 
+	test('collapses repeated whitespace inside an inline-only block', () => {
+		expect(formatHtml('<p>hello   world</p>')).toBe('<p>hello world</p>');
+	});
+
+	test('collapses repeated whitespace nested inside inline marks', () => {
+		expect(formatHtml('<p>hi <em>there  again</em></p>')).toBe('<p>hi <em>there again</em></p>');
+	});
+
+	test('drops the whitespace following a line break', () => {
+		expect(formatHtml('<p>first<br>\n  second</p>')).toBe('<p>first<br>second</p>');
+	});
+
+	test('keeps non-breaking spaces while collapsing around them', () => {
+		expect(formatHtml('<p>a&nbsp;&nbsp;b</p>')).toBe('<p>a&nbsp;&nbsp;b</p>');
+	});
+
 	test('keeps trailing whitespace inside <pre>', () => {
 		expect(formatHtml('<pre><code>a </code></pre>')).toBe('<pre><code>a </code></pre>');
 	});
